@@ -1,0 +1,16 @@
+version: 2
+
+sources:
+  - name: fashionable
+    description: >
+      Raw eCommerce sales export loaded verbatim from Fashionable_Sale_Report.csv
+      by scripts/load_raw.py. All columns are TEXT — typing/renaming happens in
+      the staging layer, not here, so the raw layer stays a faithful mirror of
+      the source file.
+    database: fashionable
+    schema: raw
+    tables:
+      - name: fashionable_sales_raw
+        description: One row per line item as delivered in the CSV export.
+        # Freshness intentionally omitted: the source is a static CSV snapshot,
+        # not an updating feed. Reintroduce once wired to a real EL pipeline.

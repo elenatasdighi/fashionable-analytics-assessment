@@ -1,0 +1,10 @@
+fashionable_analytics:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      # DBT_DUCKDB_PATH is set by the Makefile to an absolute path so that
+      # running dbt from any CWD points at the same warehouse file.
+      path: "{{ env_var('DBT_DUCKDB_PATH', 'warehouse/fashionable.duckdb') }}"
+      schema: main
+      threads: 4
