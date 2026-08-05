@@ -42,7 +42,6 @@ fashionable-analytics-assessment/
 │       └── marts/
 │           ├── dimensions/            dim_*
 │           └── facts/                 fct_*
-├── Makefile                 One-command entry points (see `make help`)
 ├── requirements.txt
 ├── DECISIONS.md             Running log of trade-offs (interview prep)
 └── FUTURE_IMPROVEMENTS.md   What I'd add given more time / for production
@@ -50,18 +49,41 @@ fashionable-analytics-assessment/
 
 ## Quickstart
 
-Prereqs: `pyenv` with 3.11.13 installed, `make`.
+Prereqs: `pyenv` with 3.11.13 installed.
 
+**One-time setup** (creates local `.venv` — nothing global):
 ```bash
-make install      # creates .venv, pip installs dbt-duckdb
-make deps         # dbt deps (dbt_utils)
-make load         # CSV → raw.fashionable_sales_raw
-make debug        # verify dbt connection
-make build        # run + test all models
-make docs         # generate + serve docs at http://localhost:8080
+PYENV_VERSION=3.11.13 python -m venv .venv
+.venv/bin/pip install --index-url https://pypi.org/simple/ -r requirements.txt
 ```
 
-Nothing is global — everything lives under this repo.
+**Activate the venv** for the rest of the session — makes `python` and `dbt`
+resolve to the ones inside `.venv/`:
+```bash
+source .venv/bin/activate
+```
+
+**Load the raw CSV into DuckDB** (idempotent, safe to re-run):
+```bash
+python scripts/load_raw.py
+```
+
+**Run dbt** — all commands need `--project-dir` and `--profiles-dir` because
+`profiles.yml` lives in-repo (portable, no `~/.dbt/` setup required):
+```bash
+dbt deps  --project-dir dbt --profiles-dir dbt
+dbt debug --project-dir dbt --profiles-dir dbt
+dbt run   --project-dir dbt --profiles-dir dbt
+dbt test  --project-dir dbt --profiles-dir dbt
+dbt build --project-dir dbt --profiles-dir dbt   # = run + test
+dbt docs generate --project-dir dbt --profiles-dir dbt
+dbt docs serve    --project-dir dbt --profiles-dir dbt
+```
+
+**DuckDB is single-writer.** Any `python scripts/load_raw.py`, `dbt run`, or
+`dbt build` fails with a "Conflicting lock" error if DBeaver has the
+warehouse file open. Disconnect DBeaver before writes; reads
+(`read_only=True` in Python, DBeaver SELECTs) can coexist.
 
 ## Current status
 

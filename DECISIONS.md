@@ -3,6 +3,13 @@
 One paragraph per major trade-off. This is the interview prep sheet — when
 asked "why did you do X?", the answer is here.
 
+**Where design decisions live:**
+- **Phase 0 — architecture** — this file (below).
+- **Phase 1 → 2 — D1–D8 (data-cleaning & modelling choices)** — full rationale
+  + interview soundbites are embedded in the speaker notes of
+  `presentations/data_profiling.pptx` slide 6. Evidence backing each decision
+  lives in `docs/profiling.md`.
+
 ## Phase 0 — Setup
 
 ### Warehouse: DuckDB via `dbt-duckdb`
@@ -59,9 +66,12 @@ matches the medallion terminology used in the README.
   revisit as `incremental` in Phase 10 if the fact table grew past a few
   million rows.
 
-### In-repo `profiles.yml` + Makefile with `--profiles-dir`
+### In-repo `profiles.yml`, invoked with explicit `--profiles-dir`
 Standard dbt puts `profiles.yml` in `~/.dbt/`, which isn't portable. Keeping
-it in `dbt/profiles.yml` and passing `--profiles-dir` (via Makefile) makes
-the project fully self-contained — clone and run, no home-directory setup.
-The DuckDB path itself is env-var driven (`DBT_DUCKDB_PATH`) with a sane
-default, so swapping warehouse locations is a one-line change.
+it in `dbt/profiles.yml` and passing `--project-dir dbt --profiles-dir dbt`
+on every command makes the project fully self-contained — clone and run,
+no home-directory setup. The DuckDB path itself is env-var driven
+(`DBT_DUCKDB_PATH`) with a relative-to-CWD default of
+`warehouse/fashionable.duckdb`, which works out of the box if you run dbt
+from the repo root.
+
