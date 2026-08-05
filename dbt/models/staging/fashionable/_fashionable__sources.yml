@@ -14,3 +14,7 @@ sources:
         description: One row per line item as delivered in the CSV export.
         # Freshness intentionally omitted: the source is a static CSV snapshot,
         # not an updating feed. Reintroduce once wired to a real EL pipeline.
+
+
+  # It's the connection config dbt reads to know where to send SQL. 
+  # Every dbt command starts by loading this file, opening a connection using these values, and then executing.
