@@ -52,18 +52,7 @@ The resulting warehouse enables fast analytical queries by **Product**, **Catego
 
 # Star Schema
 
-**Fact Table**
-
-```
-fct_sales
-```
-
-**Dimensions**
-
-- dim_product
-- dim_date
-- dim_geography
-- dim_order_status
+![Fashionable Analytics star schema](assets/star_schema_diagram.png)
 
 ### Fact Grain
 
