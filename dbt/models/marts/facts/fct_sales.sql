@@ -7,6 +7,7 @@
 with orders as (
     select
         *,
+        coalesce(ship_country,     'UNKNOWN') as ship_country_for_join,
         coalesce(ship_city,        'UNKNOWN') as ship_city_for_join,
         coalesce(ship_state,       'UNKNOWN') as ship_state_for_join,
         coalesce(ship_postal_code, 'UNKNOWN') as ship_postal_code_for_join
@@ -45,7 +46,8 @@ select
 from orders o
 inner join {{ ref('dim_date') }}         d on d.full_date          = o.order_date
 inner join {{ ref('dim_product') }}      p on p.sku                = o.sku
-inner join {{ ref('dim_geography') }}    g on g.ship_city          = o.ship_city_for_join
+inner join {{ ref('dim_geography') }}    g on g.ship_country       = o.ship_country_for_join
+                                          and g.ship_city          = o.ship_city_for_join
                                           and g.ship_state         = o.ship_state_for_join
                                           and g.ship_postal_code   = o.ship_postal_code_for_join
 inner join {{ ref('dim_order_status') }} s on s.status_detail      = o.status_detail

@@ -101,6 +101,15 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+Export the dbt env vars once per shell session so you don't have to pass
+`--project-dir` and `--profiles-dir` on every command:
+
+```bash
+export DBT_PROJECT_DIR=$PWD/dbt
+export DBT_PROFILES_DIR=$PWD/dbt
+export DBT_DUCKDB_PATH=$PWD/warehouse/fashionable.duckdb
+```
+
 ## Build the Project
 
 Load the source CSV:
@@ -112,19 +121,19 @@ python scripts/load_raw.py
 Install dbt packages:
 
 ```bash
-dbt deps --project-dir dbt --profiles-dir dbt
+dbt deps
 ```
 
 Load seed files:
 
 ```bash
-dbt seed --project-dir dbt --profiles-dir dbt
+dbt seed
 ```
 
 Build models and run tests:
 
 ```bash
-dbt build --project-dir dbt --profiles-dir dbt
+dbt build
 ```
 
 Expected result:
@@ -139,8 +148,8 @@ Expected result:
 Generate and open dbt documentation:
 
 ```bash
-dbt docs generate --project-dir dbt --profiles-dir dbt
-dbt docs serve --project-dir dbt --profiles-dir dbt
+dbt docs generate
+dbt docs serve
 ```
 
 The documentation includes:

@@ -90,13 +90,17 @@ models:
   # dim_geography
   # ==========================================================================
   - name: dim_geography
-    description: Location dimension keyed on the tuple (city, state, postal_code).
+    description: >
+      Location dimension keyed on the tuple (country, city, state, postal_code).
     columns:
       - name: geography_key
-        description: Surrogate key from md5(city + '|' + state + '|' + postal_code).
+        description: Surrogate key from md5(country + '|' + city + '|' + state + '|' + postal_code).
         tests:
           - unique
           - not_null
+      - name: ship_country
+        description: 'Destination country code.'
+        tests: [not_null]
       - name: ship_city
         description: Destination city.
         tests: [not_null]
