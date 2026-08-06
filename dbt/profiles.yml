@@ -3,9 +3,6 @@ fashionable_analytics:
   outputs:
     dev:
       type: duckdb
-      # Falls back to a repo-root-relative path — works if you always run
-      # dbt from the repo root. Export DBT_DUCKDB_PATH to an absolute path
-      # if you need to run dbt from another directory.
       path: "{{ env_var('DBT_DUCKDB_PATH', 'warehouse/fashionable.duckdb') }}"
       schema: main
       threads: 4

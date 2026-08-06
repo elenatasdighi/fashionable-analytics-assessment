@@ -1,91 +1,218 @@
-# Fashionable Analytics — Kimball Star Schema Assessment
+![Fashionable Analytics banner](assets/banner.png)
 
-A dbt project that transforms a raw eCommerce sales export
-(`Fashionable_Sale_Report.csv`, ~129k rows) into a Kimball-style dimensional
-model for marketing analytics — sales performance by style/category,
-geography, time, and order/fulfilment status.
+# Fashionable Analytics
 
-## Architecture at a glance
+A dbt project that transforms a raw eCommerce sales CSV into a Kimball star schema for sales and marketing analysis.
 
-Two-tool split, one warehouse:
+The model supports analysis by:
 
+* Product and category
+* Geography
+* Date
+* Order status
+* Fulfilment and sales channel
+
+## Architecture
+
+```text
+CSV
+ │
+ ▼
+raw.fashionable_sales_raw
+ │
+ ▼
+stg_fashionable__orders
+ │
+ ├── dim_date
+ ├── dim_product
+ ├── dim_geography
+ ├── dim_order_status
+ │
+ ▼
+fct_sales
 ```
-CSV  ──(scripts/load_raw.py)──▶  DuckDB raw.fashionable_sales_raw
-                                           │
-                                           ▼
-                                   dbt: staging  (bronze→silver: types, renames, dedupe)
-                                           │
-                                           ▼
-                                   dbt: intermediate (business logic joins)
-                                           │
-                                           ▼
-                                   dbt: marts (gold: dim_* / fct_* star schema)
-```
 
-Everything from `raw` onward is dbt. See `DECISIONS.md` for the reasoning.
+The layers are:
 
-## Layout
+* `raw`: original source data
+* `seeds`: reference data
+* `staging`: cleaned and typed source data
+* `marts`: dimensions and fact tables used for reporting
 
-```
+## Project Structure
+
+```text
 fashionable-analytics-assessment/
-├── data/raw/                Source CSV, checked in for reproducibility
-├── scripts/load_raw.py      Loads CSV → raw.fashionable_sales_raw (verbatim)
-├── warehouse/               DuckDB file lives here (gitignored)
+├── data/raw/                  Source CSV
+├── scripts/
+│   ├── load_raw.py            Loads CSV into DuckDB
+│   ├── profile_raw.sql        Data profiling queries
+│   └── build_bi_charts.py     Generates BI charts
+├── warehouse/                 Local DuckDB database
 ├── dbt/
-│   ├── dbt_project.yml      Layer defaults: staging=view, marts=table
-│   ├── profiles.yml         In-repo, portable (DBT_DUCKDB_PATH env var)
-│   ├── macros/
-│   │   └── generate_schema_name.sql   Clean schema names (no target_ prefix)
-│   └── models/
-│       ├── staging/fashionable/       stg_fashionable__*
-│       ├── intermediate/              int_fashionable__*
-│       └── marts/
-│           ├── dimensions/            dim_*
-│           └── facts/                 fct_*
+│   ├── models/staging/        Cleaned source models
+│   ├── models/marts/          Dimensions and fact table
+│   ├── seeds/                 State-to-region lookup
+│   ├── tests/                 Custom data-quality tests
+│   ├── macros/                Reusable dbt macros
+│   ├── dbt_project.yml
+│   └── profiles.yml
+├── presentations/
+│   ├── charts/
+│   └── final_deck.pptx
+├── assets/banner.png             README banner image
+├── FUTURE_IMPROVEMENTS.md
 ├── requirements.txt
-├── DECISIONS.md             Running log of trade-offs (interview prep)
-└── FUTURE_IMPROVEMENTS.md   What I'd add given more time / for production
+└── README.md
 ```
 
-## Quickstart
+## Warehouse Models
 
-Prereqs: `pyenv` with 3.11.13 installed.
+| Schema    | Model                     | Purpose                 |
+| --------- | ------------------------- | ----------------------- |
+| `raw`     | `fashionable_sales_raw`   | Original CSV data       |
+| `seeds`   | `state_to_region`         | State-to-region mapping |
+| `staging` | `stg_fashionable__orders` | Cleaned order lines     |
+| `marts`   | `dim_date`                | Date dimension          |
+| `marts`   | `dim_product`             | Product dimension       |
+| `marts`   | `dim_geography`           | Geography dimension     |
+| `marts`   | `dim_order_status`        | Order-status dimension  |
+| `marts`   | `fct_sales`               | Sales fact table        |
 
-**One-time setup** (creates local `.venv` — nothing global):
+The fact-table grain is one row per:
+
+```text
+order_id × sku
+```
+
+## Setup
+
+Requirements:
+
+* Python 3.11.13
+* dbt-duckdb
+
+Create and activate the virtual environment:
+
 ```bash
 PYENV_VERSION=3.11.13 python -m venv .venv
-.venv/bin/pip install --index-url https://pypi.org/simple/ -r requirements.txt
-```
-
-**Activate the venv** for the rest of the session — makes `python` and `dbt`
-resolve to the ones inside `.venv/`:
-```bash
 source .venv/bin/activate
+pip install -r requirements.txt
 ```
 
-**Load the raw CSV into DuckDB** (idempotent, safe to re-run):
+## Build the Project
+
+Load the source CSV:
+
 ```bash
 python scripts/load_raw.py
 ```
 
-**Run dbt** — all commands need `--project-dir` and `--profiles-dir` because
-`profiles.yml` lives in-repo (portable, no `~/.dbt/` setup required):
+Install dbt packages:
+
 ```bash
-dbt deps  --project-dir dbt --profiles-dir dbt
-dbt debug --project-dir dbt --profiles-dir dbt
-dbt run   --project-dir dbt --profiles-dir dbt
-dbt test  --project-dir dbt --profiles-dir dbt
-dbt build --project-dir dbt --profiles-dir dbt   # = run + test
-dbt docs generate --project-dir dbt --profiles-dir dbt
-dbt docs serve    --project-dir dbt --profiles-dir dbt
+dbt deps --project-dir dbt --profiles-dir dbt
 ```
 
-**DuckDB is single-writer.** Any `python scripts/load_raw.py`, `dbt run`, or
-`dbt build` fails with a "Conflicting lock" error if DBeaver has the
-warehouse file open. Disconnect DBeaver before writes; reads
-(`read_only=True` in Python, DBeaver SELECTs) can coexist.
+Load seed files:
 
-## Current status
+```bash
+dbt seed --project-dir dbt --profiles-dir dbt
+```
 
-Phase 0 complete: raw CSV loaded verbatim into DuckDB, dbt scaffolded,
-`fashionable` source declared. Transformations begin in Phase 2.
+Build models and run tests:
+
+```bash
+dbt build --project-dir dbt --profiles-dir dbt
+```
+
+Expected result:
+
+```text
+6 models built
+71 tests passed
+```
+
+## dbt Documentation
+
+Generate and open dbt documentation:
+
+```bash
+dbt docs generate --project-dir dbt --profiles-dir dbt
+dbt docs serve --project-dir dbt --profiles-dir dbt
+```
+
+The documentation includes:
+
+* Model lineage
+* Column descriptions
+* Model dependencies
+* Test coverage
+
+## Generate Charts
+
+```bash
+python scripts/build_bi_charts.py
+```
+
+Output:
+
+```text
+presentations/charts/
+```
+
+The interview deck (`presentations/final_deck.pptx`) is committed as a
+static artefact — the script that generated it is not part of the
+committed pipeline.
+
+## Example Query
+
+```sql
+select
+    p.product_style,
+    sum(f.quantity) as units,
+    round(sum(f.revenue_amount), 2) as revenue_inr
+from marts.fct_sales f
+join marts.dim_product p
+    using (product_key)
+join marts.dim_geography g
+    using (geography_key)
+join marts.dim_order_status s
+    using (status_key)
+where g.ship_city = 'MUMBAI'
+  and s.status_group in ('Delivered', 'Shipped')
+group by p.product_style
+order by units desc
+limit 5;
+```
+
+This query returns the top five product styles in Mumbai for delivered or shipped orders.
+
+## DuckDB Locking
+
+DuckDB allows only one writer at a time.
+
+If DBeaver is connected in write mode, dbt may return a locking error.
+
+Solutions:
+
+1. Close DBeaver before running dbt.
+2. Set the DBeaver connection to read-only mode.
+
+## Additional Documentation
+
+* `FUTURE_IMPROVEMENTS.md`: what would be added in a production environment
+* `presentations/final_deck.pptx`: interview presentation (21 slides)
+
+## Project Status
+
+The following components are complete:
+
+* Raw-data loading
+* Data profiling
+* Staging transformations
+* Kimball star schema
+* Data-quality tests
+* dbt documentation
+* BI charts
+* Interview presentation

@@ -1,31 +1,11 @@
 -- ============================================================================
--- profile_raw.sql — pure-SQL twin of scripts/profile_raw.py
+-- profile_raw.sql — pure-SQL
 -- ============================================================================
--- Every query below produces one of the numbers that appears in
--- docs/profiling.md / presentations/data_profiling.pptx. Copy-paste any block
--- into DBeaver / DuckDB CLI / any DuckDB REPL and it runs standalone.
---
--- Section headers match the slide numbering 1:1 with the pptx and the md.
--- Query descriptions above each block explain what that query answers on
--- that slide.
---
--- HOW TO RUN
---   DuckDB CLI:   duckdb warehouse/fashionable.duckdb -f scripts/profile_raw.sql
---   DBeaver:      open the file; run queries one at a time (Ctrl/Cmd + Enter).
---                 Connect the DuckDB driver to
---                 warehouse/fashionable.duckdb — enable "Read-only" in the
---                 driver settings so multiple readers can coexist.
---
--- LOCKING WARNING
---   DuckDB allows only ONE writer at a time. If the python load/profile scripts
---   or `dbt run` are executing, DBeaver read attempts here will fail unless the
---   DBeaver connection is opened read-only.
-
+-- Every query below produces one of the numbers that appears in presentations which show the raw data profile.
 
 -- ============================================================================
--- SLIDE 1 — Data Exploration
--- Purpose: overview KPIs (rows, unique orders, distinct product cardinalities,
--- date range). Returns one row you can read left-to-right.
+-- SLIDE 3 — Data exploration
+-- Purpose: overview KPIs 
 -- ============================================================================
 SELECT
     COUNT(*)                                          AS records,
@@ -42,11 +22,11 @@ FROM raw.fashionable_sales_raw;
 
 
 -- ============================================================================
--- SLIDE 2 — Understanding the Source Grain
+-- SLIDE 4 — Source grain: one row ≠ one order
 -- ============================================================================
 
--- Q2.1 — How many orders span multiple rows, and what's the max line count?
--- Answers "is one row = one order?" (spoiler: no).
+-- Q4.1 — How many orders span multiple rows, and what's the max line count?
+
 SELECT
     COUNT(*) FILTER (WHERE line_count > 1)  AS orders_with_multiple_rows,
     MAX(line_count)                          AS max_rows_per_order
@@ -56,7 +36,7 @@ FROM (
     GROUP BY "Order ID"
 );
 
--- Q2.2 — Product hierarchy: how deep is Style → SKU fan-out?
+-- Q4.2 — Product hierarchy: how deep is Style → SKU fan-out?
 -- Feeds the "Styles with multiple SKUs" and "Max SKUs per style" KPIs.
 SELECT
     COUNT(*) FILTER (WHERE sku_count > 1)  AS styles_with_multiple_skus,
@@ -68,7 +48,7 @@ FROM (
     GROUP BY "Style"
 );
 
--- Q2.3 — How many exact-duplicate (Order ID, SKU) pairs exist?
+-- Q4.3 — How many exact-duplicate (Order ID, SKU) pairs exist?
 -- If > 0 the natural composite PK is not unique — staging needs DISTINCT.
 SELECT
     COUNT(*)                            AS duplicate_groups,
@@ -82,10 +62,10 @@ FROM (
 
 
 -- ============================================================================
--- SLIDE 3 — Data Quality — Completeness & Uniqueness
+-- SLIDE 5 — Data quality — completeness & uniqueness
 -- ============================================================================
 
--- Q3.1 — Business-level exact duplicate rows (ignoring the technical 'index').
+-- Q5.1 — Business-level exact duplicate rows (ignoring the technical 'index').
 -- Groups on every business column; anything with count > 1 is a full row dupe.
 SELECT COALESCE(SUM(row_count - 1), 0) AS business_level_exact_duplicates
 FROM (
@@ -106,7 +86,7 @@ FROM (
     HAVING COUNT(*) > 1
 );
 
--- Q3.2 — Aggregate quality counters (missing, zeros, negatives, invalid dates,
+-- Q5.2 — Aggregate quality counters (missing, zeros, negatives, invalid dates,
 -- missing shipping fields). One-row output, one column per check.
 SELECT
     COUNT(*) FILTER (WHERE "Amount" IS NULL OR TRIM("Amount") = '')                                   AS missing_amount,
@@ -125,7 +105,14 @@ SELECT
     )                                                                                                 AS missing_shipping_info
 FROM raw.fashionable_sales_raw;
 
--- Q3.3 — SKU-level attribute drift: does the same SKU ever carry different
+-- differnt from Q5.1, which checks for exact duplicates, Q5.2 checks for missing or invalid values in specific columns.
+/*
+select * from raw.fashionable_sales_raw --courier status
+where "Order ID"  = '407-8364731-6449117'
+and SKU  = 'JNE3769-KR-L'
+*/
+
+-- Q5.3 — SKU-level attribute drift: does the same SKU ever carry different
 -- Style / Category / Size across rows? Any > 0 means master-data inconsistency.
 SELECT
     COUNT(*) FILTER (WHERE style_count    > 1) AS sku_style_drift,
@@ -144,11 +131,10 @@ FROM (
 
 
 -- ============================================================================
--- SLIDE 4 — Data Quality — Cross-field & Geography
+-- SLIDE 6 — Data quality — cross-field & geography
 -- ============================================================================
 
--- Q4.1 — Are Amount NULL and currency NULL the same rows?
--- Any of the "only X null" columns being > 0 means they're partially decoupled.
+-- Q6.1 — Are Amount NULL and currency NULL the same rows?
 SELECT
     COUNT(*) FILTER (
         WHERE ("Amount"   IS NULL OR TRIM("Amount")   = '')
@@ -164,7 +150,7 @@ SELECT
     ) AS only_currency_null
 FROM raw.fashionable_sales_raw;
 
--- Q4.2 — Cross-tab Fulfilment × fulfilled-by. If only two combos exist and
+-- Q6.2 — Cross-tab Fulfilment × fulfilled-by. If only two combos exist and
 -- they map 1:1, fulfilled-by is redundant and should be dropped in staging.
 SELECT
     "Fulfilment",
@@ -174,8 +160,8 @@ FROM raw.fashionable_sales_raw
 GROUP BY 1, 2
 ORDER BY 1, 2;
 
--- Q4.3 — Rows where Status disagrees with Courier Status.
--- Small counts (~200) → flag with a warn-level test rather than coerce/drop.
+-- Q6.3 — Rows where Status disagrees with Courier Status.
+-- Small counts (~200) → flag with a warn-level test rather than drop.
 SELECT
     "Status",
     COALESCE("Courier Status", '<NULL>') AS courier_status,
@@ -186,7 +172,7 @@ WHERE ("Status" = 'Shipped'     AND "Courier Status" IN ('Unshipped', 'Cancelled
 GROUP BY 1, 2
 ORDER BY 3 DESC;
 
--- Q4.4 — Geography casing collapse: how many distinct values disappear once
+-- Q6.4 — Geography casing collapse: how many distinct values disappear once
 -- we normalize with UPPER(TRIM())? Delta = duplication caused by casing alone.
 SELECT
     COUNT(DISTINCT "ship-city")                     AS city_raw,
@@ -198,10 +184,10 @@ FROM raw.fashionable_sales_raw;
 
 
 -- ============================================================================
--- SLIDE 5 — Not Every Anomaly Is Bad Data
+-- SLIDE 7 — Not every anomaly is bad data
 -- ============================================================================
 
--- Q5.1 — Split Qty=0 and missing-Amount counts by Status family.
+-- Q7.1 — Split Qty=0 and missing-Amount counts by Status family.
 -- Shows that most anomalies are Cancelled-order artefacts (not bad data).
 SELECT
     COUNT(*) FILTER (WHERE TRY_CAST("Qty" AS INT) = 0)                                                   AS qty_zero_total,
@@ -212,15 +198,15 @@ SELECT
     COUNT(*) FILTER (WHERE ("Amount" IS NULL OR TRIM("Amount") = '') AND TRIM("Status") LIKE 'Shipped%') AS amount_missing_shipped
 FROM raw.fashionable_sales_raw;
 
--- Q5.2 — Cancelled orders carrying a non-zero Amount.
+-- Q7.2 — Cancelled orders carrying a non-zero Amount.
 -- These are list-price snapshots; drives D1 (derived revenue_amount = 0 when cancelled).
 SELECT COUNT(*) AS cancelled_orders_with_amount_gt_zero
 FROM raw.fashionable_sales_raw
 WHERE "Status" = 'Cancelled'
   AND TRY_CAST("Amount" AS DOUBLE) > 0;
 
--- Q5.3 — Shape of the multi-valued promotion-ids column.
--- Comma-count heuristic: `commas + 1` = promo IDs per row.
+-- Q7.3 — Shape of the multi-valued promotion-ids column.
+-- Comma-count heuristic: `commas + 1` = promo IDs per row. / in future we can have dim for promotions
 SELECT
     COUNT(*) FILTER (
         WHERE NOT ("promotion-ids" IS NULL OR TRIM("promotion-ids") = '')
@@ -237,12 +223,10 @@ FROM raw.fashionable_sales_raw;
 
 
 -- ============================================================================
--- SLIDE 6 — Data Quality Treatment Strategy
--- (No per-column queries here — the slide summarises actions. The one live
---  number used is `Unnamed: 22` non-empty count, to justify EXCLUDE.)
+-- SLIDE 8 — Data quality treatment strategy
 -- ============================================================================
 
--- Q6.1 — How many rows carry a non-empty value in Unnamed: 22?
+-- Q8.1 — How many rows carry a non-empty value in Unnamed: 22?
 -- We expect 79,925 (all literal "False") — confirms it's a pandas export artefact.
 SELECT COUNT(*) AS unnamed_22_non_empty
 FROM raw.fashionable_sales_raw
@@ -250,16 +234,7 @@ WHERE NOT ("Unnamed: 22" IS NULL OR TRIM("Unnamed: 22") = '');
 
 
 -- ============================================================================
--- SLIDE 7 — Locked Decisions D1–D8
--- (Purely a synthesis slide — no queries. Content is the decision table.
---  Full rationale + interview soundbites live in the pptx speaker notes.)
--- ============================================================================
-
-
--- ============================================================================
 -- APPENDIX A1 — Missing values per column (NULL or empty string)
--- One row per column, sorted by missing count desc. Feeds the null-rate
--- appendix table in docs/profiling.md.
 -- ============================================================================
 WITH per_column AS (
     SELECT 'index'              AS column_name, COUNT(*) FILTER (WHERE "index"              IS NULL OR TRIM("index")              = '') AS missing FROM raw.fashionable_sales_raw
@@ -298,8 +273,6 @@ ORDER BY p.missing DESC;
 
 -- ============================================================================
 -- APPENDIX A2 — Categorical distributions
--- One SELECT per low-cardinality column. Run whichever ones you care about.
--- Pattern: value, count. NULLs surface as '<NULL>' via COALESCE.
 -- ============================================================================
 
 -- Status — 13 distinct values (a huge influence on D5 grouping)

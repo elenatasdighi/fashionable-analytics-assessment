@@ -1,0 +1,93 @@
+version: 2
+
+models:
+  - name: fct_sales
+    description: >
+      Sales fact — one row per order line item (order × SKU) after dedupe.
+      Joins to dim_date, dim_product, dim_geography, dim_order_status via
+      surrogate keys. Degenerate dimensions (order_id, sku, fulfilment,
+      sales_channel, ship_service_level) live on the fact.
+
+      Always use `revenue_amount` (0 on cancelled) rather than raw `amount`
+      for financial rollups.
+    columns:
+      - name: sales_key
+        description: Surrogate primary key = md5(order_id + sku).
+        tests:
+          - unique
+          - not_null
+
+      - name: date_key
+        description: FK → dim_date.date_key.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_date')
+                field: date_key
+
+      - name: product_key
+        description: FK → dim_product.product_key.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: product_key
+
+      - name: geography_key
+        description: FK → dim_geography.geography_key (UNKNOWN sentinel for 33 missing-ship rows).
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_geography')
+                field: geography_key
+
+      - name: status_key
+        description: FK → dim_order_status.status_key.
+        tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_order_status')
+                field: status_key
+
+      - name: order_id
+        description: 'Degenerate dimension: marketplace order ID.'
+        tests: [not_null]
+      - name: sku
+        description: 'Degenerate dimension.'
+        tests: [not_null]
+      - name: fulfilment
+        description: 'Degenerate dimension: Fashionable vs Merchant fulfilment.'
+      - name: sales_channel
+        description: 'Degenerate dimension'
+      - name: ship_service_level
+        description: 'Degenerate dimension: Expedited vs Standard.'
+
+      - name: quantity
+        description: Units on this line item. 0 on cancelled orders.
+        tests: [not_null]
+      - name: amount
+        description: Raw line-item amount..
+      - name: revenue_amount
+        description: >
+          Revenue-safe measure — amount if the order shipped, 0 if cancelled.
+      - name: promo_count
+        description: Number of promotion IDs on this line item (0 if none).
+        tests: [not_null]
+
+      - name: is_cancelled
+        description: True if status = 'Cancelled'.
+        tests: [not_null]
+      - name: is_b2b
+        description: True if the order is B2B.
+        tests: [not_null]
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - order_id
+              - sku

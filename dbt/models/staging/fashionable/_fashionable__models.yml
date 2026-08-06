@@ -1,0 +1,133 @@
+version: 2
+
+models:
+  - name: stg_fashionable__orders
+    description: >
+      Cleaned order line items with one row per order_id and sku.
+
+    columns:
+      - name: order_id
+        description: Marketplace order ID.
+        tests:
+          - not_null
+
+      - name: sku
+        description: Product SKU.
+        tests:
+          - not_null
+
+      - name: order_date
+        description: Parsed order date.
+        tests:
+          - not_null
+
+      - name: status_detail
+        description: Detailed order status.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - Shipped
+                  - Shipped - Delivered to Buyer
+                  - Cancelled
+                  - Shipped - Returned to Seller
+                  - Shipped - Picked Up
+                  - Pending
+                  - Pending - Waiting for Pick Up
+                  - Shipped - Returning to Seller
+                  - Shipped - Out for Delivery
+                  - Shipped - Rejected by Buyer
+                  - Shipping
+                  - Shipped - Lost in Transit
+                  - Shipped - Damaged
+
+      - name: courier_status
+        description: Courier status.
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - Shipped
+                  - Unshipped
+                  - Cancelled
+              config:
+                where: "courier_status is not null"
+
+      - name: fulfilment
+        description: Fulfilment provider.
+        tests:
+          - accepted_values:
+              arguments:
+                values:
+                  - Fashionable
+                  - Merchant
+
+      - name: sales_channel
+        description: Sales channel.
+
+      - name: ship_service_level
+        description: Shipping service level.
+
+      - name: product_style
+        description: Product style code.
+
+      - name: product_category
+        description: Product category.
+
+      - name: product_size
+        description: Product size.
+
+      - name: asin
+        description: Amazon product identifier.
+
+      - name: quantity
+        description: Ordered quantity.
+        tests:
+          - not_null
+
+      - name: amount
+        description: Raw line-item amount in INR.
+
+      - name: ship_city
+        description: Normalized shipping city.
+
+      - name: ship_city_raw
+        description: Original shipping city.
+
+      - name: ship_state
+        description: Normalized shipping state.
+
+      - name: ship_state_raw
+        description: Original shipping state.
+
+      - name: ship_postal_code
+        description: Cleaned shipping postal code.
+
+      - name: promotion_ids_raw
+        description: Raw promotion IDs.
+
+      - name: is_b2b
+        description: B2B order flag.
+        tests:
+          - not_null
+
+      - name: is_cancelled
+        description: Cancelled order flag.
+        tests:
+          - not_null
+
+      - name: revenue_amount
+        description: Revenue amount, with cancelled orders set to zero.
+
+      - name: promo_count
+        description: Number of promotion IDs.
+        tests:
+          - not_null
+
+    tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - order_id
+              - sku

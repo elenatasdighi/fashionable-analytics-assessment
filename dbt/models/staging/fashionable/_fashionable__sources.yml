@@ -2,19 +2,83 @@ version: 2
 
 sources:
   - name: fashionable
-    description: >
-      Raw eCommerce sales export loaded verbatim from Fashionable_Sale_Report.csv
-      by scripts/load_raw.py. All columns are TEXT — typing/renaming happens in
-      the staging layer, not here, so the raw layer stays a faithful mirror of
-      the source file.
+    description: Raw eCommerce sales data.
     database: fashionable
     schema: raw
+
     tables:
       - name: fashionable_sales_raw
-        description: One row per line item as delivered in the CSV export.
-        # Freshness intentionally omitted: the source is a static CSV snapshot,
-        # not an updating feed. Reintroduce once wired to a real EL pipeline.
+        description: Raw order line items loaded without transformation.
 
+        columns:
+          - name: '"index"'
+            description: Export row number.
 
-  # It's the connection config dbt reads to know where to send SQL. 
-  # Every dbt command starts by loading this file, opening a connection using these values, and then executing.
+          - name: '"Order ID"'
+            description: Marketplace order ID.
+
+          - name: '"Date"'
+            description: Order date as text.
+
+          - name: '"Status"'
+            description: Order status.
+
+          - name: '"Fulfilment"'
+            description: Fulfilment provider.
+
+          - name: '"Sales Channel"'
+            description: Sales channel.
+
+          - name: '"ship-service-level"'
+            description: Shipping service level.
+
+          - name: '"Style"'
+            description: Product style code.
+
+          - name: '"SKU"'
+            description: Product SKU.
+
+          - name: '"Category"'
+            description: Product category.
+
+          - name: '"Size"'
+            description: Product size.
+
+          - name: '"ASIN"'
+            description: Amazon product identifier.
+
+          - name: '"Courier Status"'
+            description: Courier delivery status.
+
+          - name: '"Qty"'
+            description: Ordered quantity.
+
+          - name: '"currency"'
+            description: Currency code.
+
+          - name: '"Amount"'
+            description: Line-item amount.
+
+          - name: '"ship-city"'
+            description: Shipping city.
+
+          - name: '"ship-state"'
+            description: Shipping state.
+
+          - name: '"ship-postal-code"'
+            description: Shipping postal code.
+
+          - name: '"ship-country"'
+            description: Shipping country.
+
+          - name: '"promotion-ids"'
+            description: Promotion IDs.
+
+          - name: '"B2B"'
+            description: B2B order flag.
+
+          - name: '"fulfilled-by"'
+            description: Fulfilment method.
+
+          - name: '"Unnamed: 22"'
+            description: Unused export column.

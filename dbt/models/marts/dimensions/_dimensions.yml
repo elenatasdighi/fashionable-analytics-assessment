@@ -1,0 +1,153 @@
+version: 2
+
+models:
+  # ==========================================================================
+  # dim_date
+  # ==========================================================================
+  - name: dim_date
+    description: >
+      Conformed date dimension covering 2020-01-01 → 2030-12-31 (4,018 rows).
+      Season logic follows Indian convention.
+    columns:
+      - name: date_key
+        description: Integer surrogate key in YYYYMMDD form (e.g. 20220615).
+        tests:
+          - unique
+          - not_null
+      - name: full_date
+        description: Calendar date proper.
+        tests:
+          - unique
+          - not_null
+      - name: year
+        description: Calendar year (4-digit).
+        tests: [not_null]
+      - name: quarter
+        description: Calendar quarter (1–4).
+        tests: [not_null]
+      - name: month
+        description: Calendar month (1–12).
+        tests: [not_null]
+      - name: month_name
+        description: 'Full English month name (e.g. `January`).'
+        tests: [not_null]
+      - name: day_of_month
+        description: Day of month (1–31).
+        tests: [not_null]
+      - name: day_of_week
+        description: 'Day of week using the DuckDB DOW convention: 0 = Sunday, 6 = Saturday.'
+        tests: [not_null]
+      - name: day_name
+        description: 'Full English day name (e.g. `Monday`).'
+        tests: [not_null]
+      - name: is_weekend
+        description: True when day_of_week is Saturday or Sunday.
+        tests: [not_null]
+      - name: week_of_year
+        description: ISO week of year (1–53).
+        tests: [not_null]
+      - name: season
+        description: >
+          Indian season derived from month:
+          Spring (Mar–Apr) · Summer (May–Jun) · Monsoon (Jul–Sep) ·
+          Autumn (Oct–Nov) · Winter (Dec–Feb).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Spring', 'Summer', 'Monsoon', 'Autumn', 'Winter']
+
+  # ==========================================================================
+  # dim_product
+  # ==========================================================================
+  - name: dim_product
+    description: >
+      Product master — one row per SKU (7,195 rows).
+    columns:
+      - name: product_key
+        description: Surrogate key from md5(sku). Used as FK from fct_sales.
+        tests:
+          - unique
+          - not_null
+      - name: sku
+        description: Natural key
+        tests:
+          - unique
+          - not_null
+      - name: asin
+        description: Amazon Standard Identification Number.
+      - name: product_style
+        description: Style code.
+        tests: [not_null]
+      - name: product_category
+        description: 'Broad garment category.'
+        tests: [not_null]
+      - name: product_size
+        description: 'Garment size (XS / S / M / L / XL / XXL / 3XL / 4XL / 5XL / 6XL / Free).'
+        tests: [not_null]
+
+  # ==========================================================================
+  # dim_geography
+  # ==========================================================================
+  - name: dim_geography
+    description: Location dimension keyed on the tuple (city, state, postal_code).
+    columns:
+      - name: geography_key
+        description: Surrogate key from md5(city + '|' + state + '|' + postal_code).
+        tests:
+          - unique
+          - not_null
+      - name: ship_city
+        description: Destination city.
+        tests: [not_null]
+      - name: ship_state
+        description: Indian state.
+        tests: [not_null]
+      - name: ship_postal_code
+        description: Indian postal code
+        tests: [not_null]
+      - name: region
+        description: Indian region derived from the `state_to_region` seed.
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['North', 'South', 'East', 'West', 'Northeast', 'Central', 'Unknown']
+
+  # ==========================================================================
+  # dim_order_status
+  # ==========================================================================
+  - name: dim_order_status
+    description: >
+      Order-status dimension implementing, raw `status_detail` (13
+      values) rolled up into 5 business-meaningful `status_group` buckets,
+      plus an `is_terminal` flag for funnel
+    columns:
+      - name: status_key
+        description: Surrogate key from md5(status_detail).
+        tests:
+          - unique
+          - not_null
+      - name: status_detail
+        description: Raw source status string — natural key.
+        tests:
+          - unique
+          - not_null
+      - name: status_group
+        description: >
+          **Delivered** (customer received) ·
+          **Shipped** (in transit) ·
+          **Pending** (not yet shipped) ·
+          **Cancelled** (order aborted) ·
+          **Returned** (customer sent back / rejected / damaged / lost).
+        tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: ['Delivered', 'Shipped', 'Pending', 'Cancelled', 'Returned']
+      - name: is_terminal
+        description: >
+          TRUE when the order has reached an end-state (Delivered / Cancelled
+          / Returned). FALSE for statuses that can still transition (Shipped /
+          Pending). Enforced by `assert_is_terminal_matches_status_group`.
+        tests: [not_null]

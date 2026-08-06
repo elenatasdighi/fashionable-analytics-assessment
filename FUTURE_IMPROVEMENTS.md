@@ -1,64 +1,56 @@
 # Future Improvements
 
-Things intentionally out of scope for the 4–6h build, with a note on *why*
-they matter — so the interview answer to "what would you add for production?"
-comes straight from here.
+The following items were intentionally left out due to the limited project time. They would be added in a production environment.
 
-## CI / CD
-- GitHub Actions workflow: `pip install -r requirements.txt`, `dbt deps`,
-  `dbt build`, `dbt docs generate`, upload artifacts. Guard main with
-  passing tests as a merge check.
-- `sqlfmt` + `sqlfluff` for style enforcement.
-- Slim CI: only rebuild changed models on PRs (`dbt build --select state:modified+`
-  with a state artifact from main).
+## CI/CD
+
+* Run `dbt build` automatically on every pull request.
+* Block merges when tests fail.
+* Add SQL formatting and linting.
+* Build only changed models to make CI faster.
 
 ## Orchestration
-- Wrap `load_raw.py` + `dbt build` in Airflow / Dagster / Prefect with proper
-  retry, alerting, and lineage. For an EL-real setup, replace the CSV script
-  with a Fivetran/Airbyte connector into `raw.*` tables.
 
-## dbt patterns
-- **Incremental models** on the fact table once row count justifies it
-  (probably >5M rows). Merge on `(order_id, sku)` grain.
-- **Snapshots** on the product dimension if slowly-changing attributes matter
-  (category re-classification, size re-mapping).
-- **More macros**: e.g. `clean_string()` for city/state normalization,
-  `parse_promotion_ids()` for the multi-value column — used consistently
-  wherever the pattern appears.
-- **Exposures**: declare the BI dashboards / notebooks that consume the marts
-  so lineage extends past the warehouse.
-- **Contracts** on marts models — enforced column types and constraints, so
-  a breaking schema change fails at build time rather than at BI time.
+* Run data loading and dbt through Airflow, Dagster, or Prefect.
+* Add retries, alerts, and monitoring.
+* Replace the CSV loader with a real data ingestion tool such as Fivetran or Airbyte.
 
-## Testing
-- **dbt-expectations** package for distributional tests (row count within
-  bounds, column mean within bounds, no unexpected new values).
-- **Elementary** for anomaly detection + a lightweight data-observability UI.
-- **Freshness monitors** once the CSV is replaced with a live feed.
-- **Unit tests** (`dbt` 1.8+) on tricky transformations — e.g. the
-  `promotion-ids` explode-and-dedupe logic.
+## dbt Improvements
 
-## Data quality
-- Split cancelled / rejected orders into their own downstream mart so main
-  fact represents only revenue-relevant transactions, with a clear
-  `is_cancelled` boolean surfaced instead of dropped silently.
-- Address / geography enrichment: postal-code → lat/lng, state → region.
-- Deduping the `promotion-ids` blob into a proper `bridge_order_promotion`
-  table (M:N bridge from fact to a `dim_promotion`).
+* Make the fact table incremental when the dataset becomes large.
+* Use snapshots for product and geography history.
+* Create reusable macros for repeated cleaning logic.
+* Add exposures for dashboards and notebooks.
+* Add model contracts to prevent unexpected schema changes.
+
+## Testing and Monitoring
+
+* Add more advanced data-quality tests.
+* Add anomaly detection and monitoring.
+* Add freshness checks when using a live data source.
+* Add unit tests for complex transformations.
+
+## Data Quality
+
+* Create a separate mart for cancelled and rejected orders.
+* Enrich geography data using postal codes and coordinates.
+* Split promotion IDs into a proper promotion dimension and bridge table.
+* Improve state-name matching to reduce `Unknown` regions.
+* Duplicate resolution:** For duplicate `(order_id, sku)` rows, staging keeps the row with a non-null `Amount`, then the latest `_source_index`. In production, I would add clear status priorities, alerts for new conflicts, and a resolution reason for auditability.
+
 
 ## Documentation
-- A proper data dictionary generated from `schema.yml` (script or use
-  `dbt-docs` catalog export).
-- ADRs (Architecture Decision Records) for the biggest calls — grain of
-  the fact, cancelled-order treatment, promotion bridge — instead of the
-  flat `DECISIONS.md`.
 
-## Warehouse
-- Swap DuckDB for the production warehouse (Snowflake / BigQuery /
-  Redshift). dbt project is 95% adapter-portable; profile change plus any
-  vendor-specific SQL (window functions, JSON functions) to review.
-- Role/permission model: separate `raw_reader`, `analyst`, `bi_read` roles.
+* Generate a complete data dictionary.
+* Create Architecture Decision Records for important design choices.
 
-## BI
-- Publish marts to a proper BI tool (Looker / Metabase / Superset) with
-  a semantic layer defined once, rather than in each dashboard.
+## Warehouse and Security
+
+* Move from DuckDB to Snowflake, BigQuery, or Redshift.
+* Add separate roles and permissions for different users.
+
+## BI and Semantic Layer
+
+* Connect marts to a BI tool such as Looker, Metabase, or Superset.
+* Define metrics such as revenue in one semantic layer.
+* Add dbt exposures to show which dashboards use each model.
