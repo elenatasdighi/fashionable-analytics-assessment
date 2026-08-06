@@ -140,7 +140,7 @@ Expected result:
 
 ```text
 6 models built
-71 tests passed
+79 tests passed
 ```
 
 ## dbt Documentation

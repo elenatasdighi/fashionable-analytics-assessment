@@ -103,7 +103,7 @@ Main tests check:
 * Fact-table row count matches staging.
 * Cancelled orders do not contain revenue.
 
-There are 71 tests across 6 models.
+There are 79 tests across 6 models.
 
 ## Main Rule
 
