@@ -40,12 +40,14 @@ renamed_and_typed as (
 
         try_cast("Qty" as int)                                         as quantity,
         try_cast("Amount" as decimal(10, 2))                           as amount,
+        trim("currency")                                               as currency,
 
         upper(trim("ship-city"))                                       as ship_city,
         trim("ship-city")                                              as ship_city_raw,
         upper(trim("ship-state"))                                      as ship_state,
         trim("ship-state")                                             as ship_state_raw,
         split_part(trim("ship-postal-code"), '.', 1)                   as ship_postal_code,
+        trim("ship-country")                                           as ship_country,
 
         nullif(trim("promotion-ids"), '')                              as promotion_ids_raw,
 
@@ -54,18 +56,9 @@ renamed_and_typed as (
 ),
 
 deduped as (
-    -- Keep one row per (order_id, sku). Tiebreak precedence:
-    --   1. Row with a non-null amount wins  (prefer the more-informative row).
-    --   2. If both rows have the same null-ness on amount, keep the LATER
-    --      one (higher _source_index) — assumes the source appends in
-    --      chronological order, so the later row is the more recent state.
-    --
-    -- Discovered during review: 1 of 7 dupe pairs had a real difference
-    -- (an order captured first as Cancelled then re-attempted as Shipped
-    -- with ₹487 revenue). The original ASC tiebreak silently kept the
-    -- Cancelled row and dropped the ₹487. This precedence surfaces the
-    -- shipped row instead. See FUTURE_IMPROVEMENTS.md for the case for
-    -- a first-class contradiction-resolution step.
+-- Keep one row per (order_id, sku).
+-- Prefer rows with a non-null amount; otherwise keep the latest row.
+-- This avoids keeping incomplete records when a later, more complete version exists.
     select *
     from renamed_and_typed
     qualify row_number() over (
@@ -94,12 +87,14 @@ with_derived_measures as (
 
         quantity,
         amount,
+        currency,
 
         ship_city,
         ship_city_raw,
         ship_state,
         ship_state_raw,
         ship_postal_code,
+        ship_country,
 
         promotion_ids_raw,
 

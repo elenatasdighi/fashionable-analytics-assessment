@@ -65,6 +65,10 @@ models:
         description: 'Degenerate dimension'
       - name: ship_service_level
         description: 'Degenerate dimension: Expedited vs Standard.'
+      - name: currency
+        description: 'Degenerate dimension: currency code.'
+      - name: ship_country
+        description: 'Degenerate dimension: destination country.'
 
       - name: quantity
         description: Units on this line item. 0 on cancelled orders.

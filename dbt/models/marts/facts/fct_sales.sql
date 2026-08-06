@@ -29,6 +29,8 @@ select
     o.fulfilment,
     o.sales_channel,
     o.ship_service_level,
+    o.currency,
+    o.ship_country,
 
     -- Measures
     o.quantity,

@@ -89,6 +89,9 @@ models:
       - name: amount
         description: Raw line-item amount in INR.
 
+      - name: currency
+        description: currency code.
+  
       - name: ship_city
         description: Normalized shipping city.
 
@@ -103,6 +106,9 @@ models:
 
       - name: ship_postal_code
         description: Cleaned shipping postal code.
+
+      - name: ship_country
+        description: Destination country code.
 
       - name: promotion_ids_raw
         description: Raw promotion IDs.

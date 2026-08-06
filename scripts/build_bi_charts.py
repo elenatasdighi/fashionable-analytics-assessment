@@ -74,7 +74,8 @@ def mumbai_styles_and_categories(con: duckdb.DuckDBPyConnection) -> None:
         join marts.dim_product      p using (product_key)
         join marts.dim_geography    g using (geography_key)
         join marts.dim_order_status s using (status_key)
-        where g.ship_city = 'MUMBAI'
+        where g.ship_city   = 'MUMBAI'
+          and f.ship_country = 'IN'          -- no-op today; future-proof against multi-country data
           and s.status_group in ('Delivered', 'Shipped')
         group by p.product_style
         order by units desc
@@ -91,7 +92,8 @@ def mumbai_styles_and_categories(con: duckdb.DuckDBPyConnection) -> None:
         join marts.dim_product      p using (product_key)
         join marts.dim_geography    g using (geography_key)
         join marts.dim_order_status s using (status_key)
-        where g.ship_city = 'MUMBAI'
+        where g.ship_city   = 'MUMBAI'
+          and f.ship_country = 'IN'          -- no-op today; future-proof against multi-country data
           and s.status_group in ('Delivered', 'Shipped')
         group by p.product_category
         order by units desc
@@ -172,6 +174,7 @@ def seasonal_revenue(con: duckdb.DuckDBPyConnection) -> None:
                 / count(distinct d.full_date)         as avg_daily_revenue
         from marts.fct_sales f
         join marts.dim_date d using (date_key)
+        where f.ship_country = 'IN'            -- no-op today; future-proof against multi-country data
         group by d.season
         order by min(d.month)
         """
@@ -247,7 +250,8 @@ def cancellation_rate_by_region(con: duckdb.DuckDBPyConnection) -> None:
             ) as cancellation_rate
         from marts.fct_sales f
         join marts.dim_geography g using (geography_key)
-        where g.region != 'Unknown'
+        where g.region       != 'Unknown'
+          and f.ship_country  = 'IN'          -- no-op today; future-proof against multi-country data
         group by g.region
         order by cancellation_rate desc
         """

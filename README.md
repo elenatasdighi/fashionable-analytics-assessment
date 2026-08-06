@@ -50,11 +50,12 @@ fashionable-analytics-assessment/
 │   └── build_bi_charts.py     Generates BI charts
 ├── warehouse/                 Local DuckDB database
 ├── dbt/
-│   ├── models/staging/        Cleaned source models
-│   ├── models/marts/          Dimensions and fact table
-│   ├── seeds/                 State-to-region lookup
-│   ├── tests/                 Custom data-quality tests
-│   ├── macros/                Reusable dbt macros
+│   ├── models/staging/            Cleaned source models
+│   ├── models/marts/              Dimensions and fact table
+│   ├── models/DATA_QUALITY_STRATEGY.md   dbt-docs __overview__ (landing page for `dbt docs serve`)
+│   ├── seeds/                     State-to-region lookup
+│   ├── tests/                     Custom data-quality tests
+│   ├── macros/                    Reusable dbt macros
 │   ├── dbt_project.yml
 │   └── profiles.yml
 ├── presentations/
@@ -201,6 +202,7 @@ Solutions:
 
 ## Additional Documentation
 
+* `dbt/models/DATA_QUALITY_STRATEGY.md`: the CLEAN / KEEP / FLAG / EXCLUDE / TEST buckets — also rendered as the landing page of `dbt docs serve` (`http://localhost:8080/#!/overview`)
 * `FUTURE_IMPROVEMENTS.md`: what would be added in a production environment
 * `presentations/final_deck.pptx`: interview presentation (21 slides)
 
