@@ -1,108 +1,180 @@
-![Fashionable Analytics banner](assets/banner.png)
+![Fashionable Analytics Banner](assets/banner.png)
 
-# Fashionable Analytics
+# Fashionable Analytics Assessment
 
-A dbt project that transforms a raw eCommerce sales CSV into a Kimball star schema for sales and marketing analysis.
+> Transforming a raw eCommerce sales dataset into a production-style analytics warehouse using **DuckDB**, **dbt**, and **Kimball dimensional modeling**.
 
-The model supports analysis by:
+![Python](https://img.shields.io/badge/Python-3.11-blue)
+![dbt](https://img.shields.io/badge/dbt-1.x-orange)
+![DuckDB](https://img.shields.io/badge/DuckDB-Analytics-yellow)
+![Kimball](https://img.shields.io/badge/Model-Kimball-success)
+![Tests](https://img.shields.io/badge/dbt%20Tests-79-success)
 
-* Product and category
-* Geography
-* Date
-* Order status
-* Fulfilment and sales channel
+---
 
-## Architecture
+# Executive Summary
+
+This project demonstrates an end-to-end Analytics Engineering workflow:
+
+- Import raw CSV sales data into DuckDB
+- Profile and assess data quality
+- Clean and standardize the source using dbt
+- Build a Kimball Star Schema
+- Validate transformations with automated dbt tests
+- Produce BI-ready marts and visualizations
+
+The resulting warehouse enables fast analytical queries by **Product**, **Category**, **Date**, **Geography**, **Order Status**, **Fulfilment**, and **Sales Channel**.
+
+---
+
+# Solution Architecture
 
 ```text
-CSV
- │
- ▼
-raw.fashionable_sales_raw
- │
- ▼
-stg_fashionable__orders
- │
- ├── dim_date
- ├── dim_product
- ├── dim_geography
- ├── dim_order_status
- │
- ▼
+                     Fashionable Sales CSV
+                              │
+                              ▼
+                     DuckDB Raw Layer
+                              │
+                              ▼
+               dbt Staging (Cleaning & Validation)
+                              │
+       ┌───────────┬──────────┴──────────┬────────────────┐
+       ▼           ▼                     ▼                ▼
+  dim_product   dim_date          dim_geography    dim_order_status
+       │           │                     │                │
+       └───────────┴───── fct_sales ─────┴────────────────┘
+                              │
+                              ▼
+                        BI & Analytics
+```
+
+---
+
+# Star Schema
+
+**Fact Table**
+
+```
 fct_sales
 ```
 
-The layers are:
+**Dimensions**
 
-* `raw`: original source data
-* `seeds`: reference data
-* `staging`: cleaned and typed source data
-* `marts`: dimensions and fact tables used for reporting
+- dim_product
+- dim_date
+- dim_geography
+- dim_order_status
 
-## Project Structure
+### Fact Grain
+
+> **One row per Order × SKU**
+
+This preserves the lowest business grain, enabling:
+
+- Product analysis
+- Style analysis
+- Size analysis
+- Basket analysis
+- Roll-up to order level
+
+---
+
+# Data Quality Highlights
+
+The project performs systematic data-quality validation before modeling.
+
+### Checks
+
+- Duplicate detection
+- Missing-value assessment
+- Product consistency
+- Date validation
+- Business-rule validation
+- Accepted values
+- Relationships
+- Uniqueness
+
+### Key Findings
+
+- 128,975 source records
+- 6 business-level duplicate rows
+- 79 automated dbt tests
+- No invalid dates
+- No negative quantities or revenue
+- Stable SKU → Product relationships
+
+---
+
+# Project Structure
 
 ```text
 fashionable-analytics-assessment/
-├── data/raw/                  Source CSV
+│
+├── data/
+│   └── raw/
+│
 ├── scripts/
-│   ├── load_raw.py            Loads CSV into DuckDB
-│   ├── profile_raw.sql        Data profiling queries
-│   └── build_bi_charts.py     Generates BI charts
-├── warehouse/                 Local DuckDB database
+│   ├── load_raw.py
+│   ├── profile_raw.sql
+│   └── build_bi_charts.py
+│
+├── warehouse/
+│
 ├── dbt/
-│   ├── models/staging/            Cleaned source models
-│   ├── models/marts/              Dimensions and fact table
-│   ├── models/DATA_QUALITY_STRATEGY.md   dbt-docs __overview__ (landing page for `dbt docs serve`)
-│   ├── seeds/                     State-to-region lookup
-│   ├── tests/                     Custom data-quality tests
-│   ├── macros/                    Reusable dbt macros
-│   ├── dbt_project.yml
+│   ├── models/
+│   │   ├── staging/
+│   │   └── marts/
+│   ├── seeds/
+│   ├── tests/
+│   ├── macros/
 │   └── profiles.yml
+│
 ├── presentations/
-│   ├── charts/
-│   └── final_deck.pptx
-├── assets/banner.png             README banner image
+│
+├── assets/
+│
 ├── FUTURE_IMPROVEMENTS.md
-├── requirements.txt
 └── README.md
 ```
 
-## Warehouse Models
+---
 
-| Schema    | Model                     | Purpose                 |
-| --------- | ------------------------- | ----------------------- |
-| `raw`     | `fashionable_sales_raw`   | Original CSV data       |
-| `seeds`   | `state_to_region`         | State-to-region mapping |
-| `staging` | `stg_fashionable__orders` | Cleaned order lines     |
-| `marts`   | `dim_date`                | Date dimension          |
-| `marts`   | `dim_product`             | Product dimension       |
-| `marts`   | `dim_geography`           | Geography dimension     |
-| `marts`   | `dim_order_status`        | Order-status dimension  |
-| `marts`   | `fct_sales`               | Sales fact table        |
+# Warehouse Models
 
-The fact-table grain is one row per:
+| Layer | Model | Description |
+|--------|-------|-------------|
+| Raw | fashionable_sales_raw | Source CSV |
+| Seed | state_to_region | Region lookup |
+| Staging | stg_fashionable__orders | Cleaned order lines |
+| Mart | dim_product | Product dimension |
+| Mart | dim_date | Date dimension |
+| Mart | dim_geography | Geography dimension |
+| Mart | dim_order_status | Status dimension |
+| Mart | fct_sales | Sales fact |
 
-```text
-order_id × sku
-```
+---
 
-## Setup
+# Technology Stack
 
-Requirements:
+- Python 3.11
+- DuckDB
+- dbt
+- SQL
+- Kimball Dimensional Modeling
+- pytest
+- Matplotlib
 
-* Python 3.11.13
-* dbt-duckdb
+---
 
-Create and activate the virtual environment:
+# Quick Start
+
+## Install
 
 ```bash
-PYENV_VERSION=3.11.13 python -m venv .venv
-source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Export the dbt env vars once per shell session so you don't have to pass
-`--project-dir` and `--profiles-dir` on every command:
+## Configure dbt
 
 ```bash
 export DBT_PROJECT_DIR=$PWD/dbt
@@ -110,120 +182,107 @@ export DBT_PROFILES_DIR=$PWD/dbt
 export DBT_DUCKDB_PATH=$PWD/warehouse/fashionable.duckdb
 ```
 
-## Build the Project
-
-Load the source CSV:
+## Build
 
 ```bash
 python scripts/load_raw.py
-```
 
-Install dbt packages:
-
-```bash
 dbt deps
-```
-
-Load seed files:
-
-```bash
 dbt seed
-```
-
-Build models and run tests:
-
-```bash
 dbt build
 ```
 
-Expected result:
+Expected output
 
-```text
+```
 6 models built
 79 tests passed
 ```
 
-## dbt Documentation
+---
 
-Generate and open dbt documentation:
+# Documentation
+
+Generate dbt documentation
 
 ```bash
 dbt docs generate
 dbt docs serve
 ```
 
-The documentation includes:
+Includes:
 
-* Model lineage
-* Column descriptions
-* Model dependencies
-* Test coverage
+- Model lineage
+- Column documentation
+- Test coverage
+- Dependencies
 
-## Generate Charts
+---
+
+# BI Visualizations
+
+Generate charts
 
 ```bash
 python scripts/build_bi_charts.py
 ```
 
-Output:
+Outputs
 
-```text
+```
 presentations/charts/
 ```
 
-The interview deck (`presentations/final_deck.pptx`) is committed as a
-static artefact — the script that generated it is not part of the
-committed pipeline.
+The final presentation is available under
 
-## Example Query
-
-```sql
-select
-    p.product_style,
-    sum(f.quantity) as units,
-    round(sum(f.revenue_amount), 2) as revenue_inr
-from marts.fct_sales f
-join marts.dim_product p
-    using (product_key)
-join marts.dim_geography g
-    using (geography_key)
-join marts.dim_order_status s
-    using (status_key)
-where g.ship_city = 'MUMBAI'
-  and s.status_group in ('Delivered', 'Shipped')
-group by p.product_style
-order by units desc
-limit 5;
+```
+presentations/final_deck.pptx
 ```
 
-This query returns the top five product styles in Mumbai for delivered or shipped orders.
+---
 
-## DuckDB Locking
+# Example Business Query
 
-DuckDB allows only one writer at a time.
+```sql
+SELECT
+    p.product_style,
+    SUM(f.quantity) AS units,
+    ROUND(SUM(f.revenue_amount),2) AS revenue_inr
+FROM marts.fct_sales f
+JOIN marts.dim_product p USING(product_key)
+JOIN marts.dim_geography g USING(geography_key)
+JOIN marts.dim_order_status s USING(status_key)
+WHERE g.ship_city='MUMBAI'
+AND s.status_group IN ('Delivered','Shipped')
+GROUP BY p.product_style
+ORDER BY units DESC
+LIMIT 5;
+```
 
-If DBeaver is connected in write mode, dbt may return a locking error.
+---
 
-Solutions:
+# Additional Documentation
 
-1. Close DBeaver before running dbt.
-2. Set the DBeaver connection to read-only mode.
+- DATA_QUALITY_STRATEGY.md
+- FUTURE_IMPROVEMENTS.md
+- final_deck.pptx
 
-## Additional Documentation
+---
 
-* `dbt/models/DATA_QUALITY_STRATEGY.md`: the CLEAN / KEEP / FLAG / EXCLUDE / TEST buckets — also rendered as the landing page of `dbt docs serve` (`http://localhost:8080/#!/overview`)
-* `FUTURE_IMPROVEMENTS.md`: what would be added in a production environment
-* `presentations/final_deck.pptx`: interview presentation (21 slides)
+# Project Deliverables
 
-## Project Status
+✅ Raw data ingestion
 
-The following components are complete:
+✅ Data profiling
 
-* Raw-data loading
-* Data profiling
-* Staging transformations
-* Kimball star schema
-* Data-quality tests
-* dbt documentation
-* BI charts
-* Interview presentation
+✅ Data cleaning
+
+✅ Kimball dimensional model
+
+✅ Automated dbt testing
+
+✅ BI-ready marts
+
+✅ Technical documentation
+
+✅ Interview presentation
